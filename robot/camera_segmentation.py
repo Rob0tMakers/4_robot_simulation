@@ -55,8 +55,8 @@ def return_orientation(IMG):
     grn_mask = cv.dilate(grn_mask, dilate_kernel, iterations=5)
     
     # yellow
-    low_yel = np.array([20, 75, 150]) 
-    high_yel = np.array([50, 200, 255])
+    low_yel = np.array([15, 100, 120]) 
+    high_yel = np.array([50, 255, 255])
     yel_mask = cv.inRange(hsv, low_yel, high_yel)
     erode_kernel = np.ones((3,3), np.uint8) 
     yel_mask = cv.erode(yel_mask, erode_kernel, iterations=1)
@@ -123,15 +123,17 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     hsv = cv.cvtColor(blur1, cv.COLOR_BGR2HSV)
 
     # change yellow.
-    low_yel = np.array([20, 75, 150]) 
-    high_yel = np.array([50, 200, 255])
-    yel_mask = cv.inRange(hsv, low_yel, high_yel)
-    erode_kernel = np.ones((3,3), np.uint8) 
-    yel_mask = cv.erode(yel_mask, erode_kernel, iterations=1)
-    dilate_kernel = np.ones((3,3), np.uint8) 
-    yel_mask = cv.dilate(yel_mask, dilate_kernel, iterations=1)
+    low_grn = np.array([50, 30, 30])
+    high_grn = np.array([80, 150, 180])
+    grn_mask = cv.inRange(hsv, low_grn, high_grn)
+    erode_kernel = np.ones((11,11), np.uint8) 
+    grn_mask = cv.erode(grn_mask, erode_kernel, iterations=3)
+    # We dilated a lot because there is a lot of green noise
+    dilate_kernel = np.ones((5,5), np.uint8) 
+    grn_mask = cv.dilate(grn_mask, dilate_kernel, iterations=5)
 
-    cv.imshow('Yel', yel_mask)
+
+    cv.imshow('Yel', grn_mask)
     key = cv.waitKey(1) & 0xFF
     rawCapture.truncate(0)
     if key == ord("q"):
