@@ -209,6 +209,45 @@ def sense_target():
 
 # -----------------------------------------------------------------
 
+# -------------------- Party functions ----------------------------
+
+def benchWarm():
+    gender = np.random.randint(1,2) #perhaps create class robot so you can set this to a variable defining the robot?
+    if gender == 1:
+        # set color to blue
+    else:
+        # set color to red
+    while True:
+        sendInformation(gender) # maybe only send every 100 ms?
+        # perhaps run sending and receiving threads at the same time?
+        # if receive a 3,4,5,6 --> send a handshake and acknowledge? move to dance
+    
+    # create a time break point where it moves onto findDancePartner
+
+def findDancePartner():
+    # make sure you know your gender. If not making a class variable, perhaps set this as an input parameter?
+    # follow the wall and receive info until you find the OPPOSITE gender
+    # randomly choose a number btwn 3-6, and then moveToDanceFloor
+    # choose a time duration to give up after (benchWarm again)
+    pass
+
+def moveToDanceFloor(dancefloor):
+    #locate where you are (particleFilter)
+    # determine how to move to dancefloor area
+    # execute move
+    # doublecheck you are in the riht spot?
+    pass
+
+def dance():
+    # make up a dance!! Max time 15 seconds then returnToRest
+    pass
+
+def returnToRest():
+    # Go back to the wall away from other robots and FACE the arena (not the wall)
+    # benchWarm() again.
+
+# ----------------------------------------------------------
+
 scanner_thread = threading.Thread(target=lidarScan)
 scanner_thread.daemon = True
 scanner_thread.start()
