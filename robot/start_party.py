@@ -8,6 +8,7 @@ import numpy as np
 import cv2 as cv
 from picamera import PiCamera
 from time import sleep
+import time
 import dbus
 import dbus.mainloop.glib
 from adafruit_rplidar import RPLidar
@@ -55,37 +56,9 @@ PORT_NAME = '/dev/ttyUSB0'
 lidar = RPLidar(None, PORT_NAME)
 #This is where we store the lidar readings
 scan_data = [0]*360
+# this is where we store the IR readings
+prox_horizontal = [0]*5
 #--------------------- init script end -------------------------
-
-def testCamera():
-    print("Camera test")
-    camera.start_preview()
-    sleep(5)
-    #we capture to openCV compatible format
-    #you might want to increase resolution
-    camera.resolution = (320, 240)
-    camera.framerate = 24
-    sleep(2)
-    image = np.empty((240, 320, 3), dtype=np.uint8)
-    camera.capture(image, 'bgr')
-    cv2.imwrite('out.png', image) 
-    camera.stop_preview()
-    print("saved image to out.png")
-
-def testThymio():
-    left_wheel = 20
-    right_wheel = 200
-    asebaNetwork.SendEventName(
-        'motor.target',
-        [left_wheel, right_wheel]
-    )
-    print("motor should be running now")
-    sleep(5)
-    asebaNetwork.SendEventName(
-        'motor.target',
-        [0, 0]
-    )
-
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
 # try disconnecting the usb cable and reconnect again. That should fix the issue
@@ -96,6 +69,28 @@ def lidarScan():
             return
         for (_, angle, distance) in scan:
             scan_data[min([359, floor(angle)])] = distance
+            
+def infraredScan():
+    prox_horizontal = asebaNetwork.GetVariable("thymio-II", "prox.horizontal")
+
+def obstacleAvoidance():
+    if prox_horizontal[2] < 100: #if anything straight ahead is closer than 10 cm
+        #options: blindly go around it?
+        # or particle filter around it
+
+def followTheWall():
+    if scan_data[270] > 200: # too far from the wall
+        asebaNetwork.SendEventName(
+        'motor.target',
+        [0, 10]) #adjust slightly to the left # should we have something if we are too much close to the wall?
+    elif scan_data[0] < 200: #sense something before it (likely a corner)
+        asebaNetwork.SendEventName(
+        'motor.target',
+        [50, 0]) #blind turn to the right
+    else:
+        asebaNetwork.SendEventName(
+        'motor.target',
+        [200, 50]) #move forward
 
 #----------------------------- IMAGE PROCESSING FUNCTIONS --------------------------
 def get_area(mask):
@@ -192,7 +187,10 @@ def return_orientation(IMG):
 
     # 0 = none, 1 = red, 2 = green, 3 = blue, 4 = yellow
     if biggest_area < second_biggest_area*1.2: # arbitary threshold to see if two targets are visible.
-        return biggest_mask, second_biggest_mask
+        if set([biggest_mask, second_biggest_mask]) == set([1,4]):
+            return 4.5
+        else:
+            return (biggest_mask + second_biggest_mask)/2
     else: 
         return biggest_mask
 
@@ -212,27 +210,62 @@ def sense_target():
 # -------------------- Party functions ----------------------------
 
 def benchWarm():
+    wait_time = 60
+    t_0 = time.time()
+    print("It is now " + str(t_0))
+    end_time = t_0 + wait_time
+    print("We will wait for a dance partner until " + str(end_time))
     gender = np.random.randint(1,2) #perhaps create class robot so you can set this to a variable defining the robot?
     if gender == 1:
         # set color to blue
+        asebaNetwork.SendEventName("leds.top", [0,0,32])
     else:
         # set color to red
-    while True:
-        sendInformation(gender) # maybe only send every 100 ms?
-        # perhaps run sending and receiving threads at the same time?
-        # if receive a 3,4,5,6 --> send a handshake and acknowledge? move to dance
-    
-    # create a time break point where it moves onto findDancePartner
+        asebaNetwork.SendEventName("leds.top", [32,0,0])
 
-def findDancePartner():
-    # make sure you know your gender. If not making a class variable, perhaps set this as an input parameter?
-    # follow the wall and receive info until you find the OPPOSITE gender
+    rx = [gender]
+
+    broadcast_thread = threading.Thread(target=sendInformation(gender))
+    broadcast_thread.daemon = True
+    broadcast_thread.start()
+
+    receiving_thread = threading.Thread(target=receiveInformation)
+    receiving_thread.daemon = True
+    receiving_thread.start()
+    
+    while time.time() < end_time: ##### See if we can actually detect a dance partner this way
+        if rx[0] != gender:
+            print("Partner found <3 <3 <3")
+            if rx[0] in [3,4,5,6]:
+                broadcast_thread.stop()
+                receiving_thread.stop()
+                moveToDanceFloor(rx[0])
+
+    print("Time to go find someone myself!")
+    findDancePartner(gender)
+
+def findDancePartner(gender):
+    print("Finding a dance partner")
+    # move clockwise. First turn along the wall blindly
+    asebaNetwork.SendEventName('motor.target', [0,50]) #adjust so a 90deg turn is done to the left.
+
+    # follow the wall
+    # move constantly forward
+
+    # find opposite gender
+    if rx[0] != gender:
+        print("Partner found!!! <3 <3 <3 <3")
+        dancefloor = np.random.randint(3,6)
+        for i in range(5):
+            sendInformation(dancefloor) #after we send it 5 times, assume they've seen it
+        moveToDanceFloor(dancefloor)
+
     # randomly choose a number btwn 3-6, and then moveToDanceFloor
     # choose a time duration to give up after (benchWarm again)
     pass
 
 def moveToDanceFloor(dancefloor):
-    #locate where you are (particleFilter)
+    #locate where you are (particleFilter) --> should this be a speerate thread?
     # determine how to move to dancefloor area
     # execute move
     # doublecheck you are in the riht spot?
@@ -240,11 +273,17 @@ def moveToDanceFloor(dancefloor):
 
 def dance():
     # make up a dance!! Max time 15 seconds then returnToRest
+    # moving and then doing a circle?
+    # randomly move in the parameter. (w sensors calibrated)
     pass
 
 def returnToRest():
-    # Go back to the wall away from other robots and FACE the arena (not the wall)
+    # Locate area
+    # Determine nearest wall
+    # Move to nearest wall
+    # Turn away from the wall
     # benchWarm() again.
+    pass
 
 # ----------------------------------------------------------
 
@@ -252,16 +291,18 @@ scanner_thread = threading.Thread(target=lidarScan)
 scanner_thread.daemon = True
 scanner_thread.start()
 
+IR_thread = threading.Thread(target=infraredScan)
+IR_thread.daemon = True
+IR_thread.start()
+
+obstacle_thread = threading.Thread(target=obstacleAvoidance)
+obstacle_thread.daemon = True
+obstacle_thread.start()
+
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    #do stuff
-    lidar = [scan_data[0], scan_data[45], scan_data[90], scan_data[135], scan_data[180], scan_data[225], scan_data[270], scan_data[315]]
-    colour = sense_target()
-    print(lidar + [sense_target()])
-    testThymio()
-    sleep(3)
-    print()
+    followTheWall()
 
 #------------------- Main loop end ------------------------
 
@@ -301,5 +342,8 @@ if __name__ == '__main__':
         sleep(1)
         lidar.stop()
         lidar.disconnect()
+        asebaNetwork.SendEventName(
+        'motor.target',
+        [0, 0])
         os.system("pkill -n asebamedulla")
         print("asebamodulla killed")
