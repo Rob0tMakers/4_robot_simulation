@@ -75,6 +75,7 @@ def infraredScan():
 
 def obstacleAvoidance():
     if prox_horizontal[2] < 100: #if anything straight ahead is closer than 10 cm
+        print("Obstacle!")
         #options: blindly go around it?
         # or particle filter around it
 
@@ -225,7 +226,7 @@ def benchWarm():
 
     rx = [gender]
 
-    broadcast_thread = threading.Thread(target=sendInformation(gender))
+    broadcast_thread = threading.Thread(target=sendInformation, args=gender)
     broadcast_thread.daemon = True
     broadcast_thread.start()
 
@@ -237,9 +238,10 @@ def benchWarm():
         if rx[0] != gender:
             print("Partner found <3 <3 <3")
             if rx[0] in [3,4,5,6]:
+                dancefloor = rx[0]
                 broadcast_thread.stop()
                 receiving_thread.stop()
-                moveToDanceFloor(rx[0])
+                moveToDanceFloor(dancefloor)
 
     print("Time to go find someone myself!")
     findDancePartner(gender)
@@ -247,22 +249,28 @@ def benchWarm():
 def findDancePartner(gender):
     print("Finding a dance partner")
     # move clockwise. First turn along the wall blindly
+
+    search_time = 120 #two minutes
+    t_0 = time.time()
+    print("It is now " + str(t_0))
+    end_time = t_0 + search_time
+    print("We will wait for a dance partner until " + str(end_time))
+
     asebaNetwork.SendEventName('motor.target', [0,50]) #adjust so a 90deg turn is done to the left.
 
-    # follow the wall
-    # move constantly forward
+    while time.time() < end_time:
 
-    # find opposite gender
-    if rx[0] != gender:
-        print("Partner found!!! <3 <3 <3 <3")
-        dancefloor = np.random.randint(3,6)
-        for i in range(5):
-            sendInformation(dancefloor) #after we send it 5 times, assume they've seen it
-        moveToDanceFloor(dancefloor)
+        # run follow the wall behaviour
+        if rx[0] != gender:
+            print("Partner found!!! <3 <3 <3 <3")
+            dancefloor = np.random.randint(3,6)
+            broadcast_thread.stop()
+            receiving_thread.stop()
+            for i in range(5):
+                sendInformation(dancefloor) #after we send it 5 times, assume they've seen it
+            moveToDanceFloor(dancefloor)
 
-    # randomly choose a number btwn 3-6, and then moveToDanceFloor
-    # choose a time duration to give up after (benchWarm again)
-    pass
+    returnToRest() #no partner has been found. return to rest.
 
 def moveToDanceFloor(dancefloor):
     #locate where you are (particleFilter) --> should this be a speerate thread?
