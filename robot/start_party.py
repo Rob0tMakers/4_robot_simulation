@@ -80,10 +80,12 @@ def obstacleAvoidance():
         # or particle filter around it
 
 def followTheWall():
+    print(scan_data[[0,45,90,135,180,225,270,315]])
     if scan_data[270] > 200: # too far from the wall
         asebaNetwork.SendEventName(
         'motor.target',
         [0, 10]) #adjust slightly to the left # should we have something if we are too much close to the wall?
+        # sleep(1) #do we need to have a sleep to make sure that
     elif scan_data[0] < 200: #sense something before it (likely a corner)
         asebaNetwork.SendEventName(
         'motor.target',
