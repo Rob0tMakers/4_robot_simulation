@@ -58,6 +58,8 @@ lidar = RPLidar(None, PORT_NAME)
 scan_data = [0]*360
 # this is where we store the IR readings
 prox_horiz = [0]*5
+# store receiving signals here
+rx = [0]
 #--------------------- init script end -------------------------
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
@@ -262,24 +264,13 @@ def benchWarm():
     else:
         # set color to red
         asebaNetwork.SendEventName("leds.top", [32,0,0])
-
-    rx = [gender]
-
-    broadcast_thread = threading.Thread(target=sendInformation, args=gender)
-    broadcast_thread.daemon = True
-    broadcast_thread.start()
-
-    receiving_thread = threading.Thread(target=receiveInformation)
-    receiving_thread.daemon = True
-    receiving_thread.start()
     
     while time.time() < end_time: ##### See if we can actually detect a dance partner this way
+        sendInformation(gender)
         if rx[0] != gender:
             print("Partner found <3 <3 <3")
             if rx[0] in [3,4,5,6]:
                 dancefloor = rx[0]
-                broadcast_thread.stop()
-                receiving_thread.stop()
                 moveToDanceFloor(dancefloor)
 
     print("Time to go find someone myself!")
@@ -293,9 +284,11 @@ def findDancePartner(gender):
     sleep(2.5)
     obstacle = False
     while not obstacle:
+        sendInformation(gender)
         obstacle = followWall('cw')
     # check to see if we have received a signal
     if rx[0] != gender:
+        sendInformation(gender)
         print("Partner found!!!!")
         dancefloor = np.random.randint(3,6)
         for i in range(5):
@@ -309,8 +302,10 @@ def findDancePartner(gender):
     sleep(8.25)
     obstacle = False
     while not obstacle:
+        sendInformation(gender)
         obstacle = followWall('ccw')
     if rx[0] != gender:
+        sendInformation(gender)
         print("Partner found!!!!")
         dancefloor = np.random.randint(3,6)
         for i in range(5):
@@ -355,9 +350,9 @@ IR_thread = threading.Thread(target=infraredScan)
 IR_thread.daemon = True
 IR_thread.start()
 
-#obstacle_thread = threading.Thread(target=obstacleAvoidance)
-#obstacle_thread.daemon = True
-#obstacle_thread.start()
+receiving_thread = threading.Thread(target=receiveInformation)
+receiving_thread.daemon = True
+receiving_thread.start()
 
 #------------------ Main loop here -------------------------
 
