@@ -32,17 +32,17 @@ def return_orientation(IMG):
     ####### CREATE COLOUR MASKS ##########
     
     # blue
-    low_blue = np.array([70, 70, 50])
-    high_blue = np.array([150, 255, 200])
+    low_blue = np.array([80, 100, 50])
+    high_blue = np.array([150, 255, 250])
     blue_mask = cv.inRange(hsv, low_blue, high_blue)
     erode_kernel = np.ones((11,11), np.uint8) 
-    blue_mask = cv.erode(blue_mask, erode_kernel, iterations=4)
+    blue_mask = cv.erode(blue_mask, erode_kernel, iterations=3)
     dilate_kernel = np.ones((5,5), np.uint8) 
     blue_mask = cv.dilate(blue_mask, dilate_kernel, iterations=1)
     
     # green
     low_grn = np.array([50, 30, 30])
-    high_grn = np.array([80, 150, 180])
+    high_grn = np.array([85, 150, 180])
     grn_mask = cv.inRange(hsv, low_grn, high_grn)
     erode_kernel = np.ones((11,11), np.uint8) 
     grn_mask = cv.erode(grn_mask, erode_kernel, iterations=3)

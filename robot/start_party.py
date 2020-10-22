@@ -63,9 +63,11 @@ rx = [0]
 # for particle filtering
 x_hat = 0
 y_hat = 0
-toggle = True # toggling between random sampling and gaussian sampling
+q_hat = 0
+sample_toggle = True # toggling between random sampling and gaussian sampling
 # camera output
 camera_output = 0
+lidar_index = [0,45,90,135,180,225,270,315]
 #--------------------- init script end -------------------------
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
@@ -87,13 +89,18 @@ def infraredScan():
 
 
 def locationFinder():
+    global sample_toggle, x_hat, y_hat, q_hat, scan_data, lidar_index
+
     while True:
+        if sample_toggle == True:
+            camera_output = calibrate()
         if camera_output > 0:
-            approximateLocation(np.array(scan_data), camera_output, x_hat, y_hat, toggle)
+            particle, sample_toggle = approximateLocation(np.array(scan_data)[lidar_index], camera_output, x_hat, y_hat, q_hat, sample_toggle)
+            x_hat = particle[0]
+            y_hat = particle[1]
+            q_hat = particle[2]
 
-
-
-def followWall(direction):
+def followWall(direction, gender):
     if direction == "cw":
         side_sensor = 270
         L_turnfromwall = 150
@@ -118,7 +125,7 @@ def followWall(direction):
         near_threshold = 150
         wait_time = 2
 
-    if receiveInformation() in [1,2] and receiveInformation() not gender:
+    if receiveInformation() in [1,2] and receiveInformation()[0] != gender:
         asebaNetwork.SendEventName(
         'motor.target', [0,0])
         return True
@@ -237,7 +244,7 @@ def findDancePartner(gender):
     obstacle = False
     while not obstacle:
         sendInformation(gender)
-        obstacle = followWall('cw')
+        obstacle = followWall('cw', gender)
     # check to see if we have received a signal
     rx = asebaNetwork.GetVariable("thymio-II", "prox.comm.rx")
     if rx[0] != gender:
@@ -256,7 +263,7 @@ def findDancePartner(gender):
     obstacle = False
     while not obstacle:
         sendInformation(gender)
-        obstacle = followWall('ccw')
+        obstacle = followWall('ccw', gender)
     rx = asebaNetwork.GetVariable("thymio-II", "prox.comm.rx")
     if rx[0] not in set([0, gender]):
         sendInformation(gender)
@@ -310,7 +317,11 @@ location_thread.start()
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    findDancePartner(2)
+    sleep(5)
+    print(sample_toggle)
+    print(x_hat, y_hat, q_hat)
+    print()
+    #benchWarm()
 
 #------------------- Main loop end ------------------------
 

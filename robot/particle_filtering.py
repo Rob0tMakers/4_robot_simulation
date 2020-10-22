@@ -132,7 +132,7 @@ def simulateParticleLidar(mat):
 
 
 ### Exportable Function ###
-def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, toggle):
+def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, q_hat, toggle):
     particles = np.array([])
 
     if toggle == True:
@@ -140,7 +140,7 @@ def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, toggle):
         toggle = False
     else:
         # we are using the previous approximation (x_hat, y_hat) to approximate the next particle
-        particles = resampleParticles(x_hat, y_hat, camera_output) # set particles [[x, y, q], ...]
+        particles = resampleParticles(x_hat, y_hat, q_hat) # set particles [[x, y, q], ...]
 
     # this array contains the distances to the walls, simulating our lidar laser range finder's output
     particles_lidar = np.apply_along_axis(rollLinewise, 1, particles)
@@ -157,15 +157,8 @@ def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, toggle):
     # location approximation
     approx = particles[delta_min_i]
     
-    # PREPARE NEXT ITERATION
-    
-    # set previously fittest particle [x_hat, y_hat, q_hat]
-    
-    x_hat = approx[0]
-    y_hat = approx[1]
-    
     # if an error threshold is passed, the particle filtering should start from the beginning with a random sample
-    if sum_delta[delta_min_i] > 1.5:
+    if sum_delta[delta_min_i] > 2.5:
         toggle = True
 
-    return approx
+    return approx, toggle
