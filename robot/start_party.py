@@ -78,6 +78,8 @@ def infraredScan():
         for i in range(5):
             prox_horiz[i] = int(sensor_readings[i])
             # we can try to save 5 and 6 as they are back sensors
+        for i in range(6,8):
+            prox_back[i] = int(sensor_readings[i])
 
 
 def followWall(direction):
@@ -133,6 +135,29 @@ def followWall(direction):
         [200, 50]) 
 
     return False
+
+def calibrate():
+    targetSeen = False
+    seen = sense_target()
+    if seen != 0:
+        # wait to see if we see the same thing multiple times
+        seen2 = sense_target()
+        if seen == seen2:
+            targetSeen = True
+    while not targetSeen:
+        # turn counterclockwise
+        asebaNetwork.SendEventName(
+        'motor.target', [0,15])
+        sleep(0.5)
+        asebaNetwork.SendEventName(
+        'motor.target', [0,0])
+        seen = sense_target()
+        if seen != 0:
+            # wait to see if we see the same thing multiple times
+            seen2 = sense_target()
+            if seen == seen2:
+                targetSeen = True
+    return seen
     
 #----------------------------- IMAGE PROCESSING FUNCTIONS --------------------------
 def get_area(mask):
@@ -164,17 +189,17 @@ def return_orientation(IMG):
     ####### CREATE COLOUR MASKS ##########
     
     # blue
-    low_blue = np.array([70, 70, 50])
-    high_blue = np.array([150, 255, 200])
+    low_blue = np.array([80, 100, 50])
+    high_blue = np.array([150, 255, 250])
     blue_mask = cv.inRange(hsv, low_blue, high_blue)
     erode_kernel = np.ones((11,11), np.uint8) 
-    blue_mask = cv.erode(blue_mask, erode_kernel, iterations=4)
+    blue_mask = cv.erode(blue_mask, erode_kernel, iterations=3)
     dilate_kernel = np.ones((5,5), np.uint8) 
     blue_mask = cv.dilate(blue_mask, dilate_kernel, iterations=1)
     
     # green
     low_grn = np.array([50, 30, 30])
-    high_grn = np.array([80, 150, 180])
+    high_grn = np.array([85, 150, 180])
     grn_mask = cv.inRange(hsv, low_grn, high_grn)
     erode_kernel = np.ones((11,11), np.uint8) 
     grn_mask = cv.erode(grn_mask, erode_kernel, iterations=3)
@@ -247,6 +272,29 @@ def sense_target():
     IMG = rawCapture.array
     return return_orientation(IMG)
 
+
+#this enables the prox.com communication channels
+asebaNetwork.SendEventName( "prox.comm.enable", [1])
+asebaNetwork.SendEventName("prox.comm.rx",[0])
+    
+
+def sendInformation(number):
+    #asebaNetwork.SetVariable("thymio-II", "prox.comm.tx", [number])
+    asebaNetwork.SendEventName(
+            "prox.comm.tx",
+            [number]
+            )
+def get_rx_reply(r):
+    print("found", r)
+def get_rx_error(e):
+    print("error:", e)
+    print(str(e))
+def receiveInformation():
+    rx = asebaNetwork.GetVariable("thymio-II", "prox.comm.rx")
+    #asebaNetwork.GetVariable("thymio-II", "prox.comm.rx", \
+    #        reply_handler=get_rx_reply,error_handler=get_rx_error)
+    print(rx[0])
+
 # -----------------------------------------------------------------
 
 # -------------------- Party functions ----------------------------
@@ -317,9 +365,8 @@ def findDancePartner(gender):
     # turn so we face outagain
     returnToRest()
 
-    # randomly choose a number btwn 3-6, and then moveToDanceFloor
-
 def moveToDanceFloor(dancefloor):
+    asebaNetwork.SendEventName("leds.top", [32,0,32])
     #locate where you are (particleFilter) --> should this be a speerate thread?
     # determine how to move to dancefloor area
     # execute move
@@ -357,31 +404,12 @@ receiving_thread.start()
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    findDancePartner(1)
+    #benchWarm()
+    print(calibrate())
+    print('Calibration is over.')
 
 #------------------- Main loop end ------------------------
 
-#this enables the prox.com communication channels
-asebaNetwork.SendEventName( "prox.comm.enable", [1])
-asebaNetwork.SendEventName("prox.comm.rx",[0])
-    
-
-def sendInformation(number):
-    #asebaNetwork.SetVariable("thymio-II", "prox.comm.tx", [number])
-    asebaNetwork.SendEventName(
-            "prox.comm.tx",
-            [number]
-            )
-def get_rx_reply(r):
-    print("found", r)
-def get_rx_error(e):
-    print("error:", e)
-    print(str(e))
-def receiveInformation():
-    rx = asebaNetwork.GetVariable("thymio-II", "prox.comm.rx")
-    #asebaNetwork.GetVariable("thymio-II", "prox.comm.rx", \
-    #        reply_handler=get_rx_reply,error_handler=get_rx_error)
-    print(rx[0])
 
 if __name__ == '__main__':
     #testCamera()
