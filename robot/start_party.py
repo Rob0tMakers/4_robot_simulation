@@ -5,7 +5,6 @@ import os
 os.system("(asebamedulla ser:name=Thymio-II &) && sleep 0.3")
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2 as cv
 from picamera import PiCamera
 from time import sleep
 import time
@@ -14,7 +13,8 @@ import dbus.mainloop.glib
 from adafruit_rplidar import RPLidar
 from math import cos, sin, pi, floor
 import threading
-from picamera.array import PiRGBArray
+from image_processing import sense_target
+from particle_filtering import approximateLocation
 
 
 print("Starting robot")
@@ -60,6 +60,12 @@ scan_data = [0]*360
 prox_horiz = [0]*5
 # store receiving signals here
 rx = [0]
+# for particle filtering
+x_hat = 0
+y_hat = 0
+toggle = True # toggling between random sampling and gaussian sampling
+# camera output
+camera_output = 0
 #--------------------- init script end -------------------------
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
@@ -80,6 +86,13 @@ def infraredScan():
             # we can try to save 5 and 6 as they are back sensors
         for i in range(6,8):
             prox_back[i] = int(sensor_readings[i])
+
+
+def locationFinder():
+    while True:
+        if camera_output > 0:
+            approximateLocation(np.array(scan_data), camera_output, x_hat, y_hat, toggle)
+
 
 
 def followWall(direction):
@@ -128,14 +141,14 @@ def followWall(direction):
         asebaNetwork.SendEventName(
         'motor.target',
         [L_turntowall, R_turntowall]) 
-      
+    
     else: #move forward
         asebaNetwork.SendEventName(
         'motor.target',
         [200, 50]) 
 
     return False
-
+    
 def calibrate():
     targetSeen = False
     seen = sense_target()
@@ -389,16 +402,16 @@ def returnToRest():
 
 # ----------------------------------------------------------
 
-scanner_thread = threading.Thread(target=lidarScan)
-scanner_thread.daemon = True
+scanner_thread = threading.Thread(target=lidarScan, daemon = True)
 scanner_thread.start()
 
-IR_thread = threading.Thread(target=infraredScan)
-IR_thread.daemon = True
+IR_thread = threading.Thread(target=infraredScan, daemon = True)
 IR_thread.start()
 
-receiving_thread = threading.Thread(target=receiveInformation)
-receiving_thread.daemon = True
+receiving_thread = threading.Thread(target=receiveInformation, daemon = True)
+receiving_thread.start()
+
+location_thread = threading.Thread(target=locationFinder, daemon = True)
 receiving_thread.start()
 
 #------------------ Main loop here -------------------------
