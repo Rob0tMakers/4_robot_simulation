@@ -419,31 +419,31 @@ def dance():
 #             asebaNetwork.SendEventName('motor.target', [-200, -50])
 #             benchWarm()
 
-def returnToRest2(): #we can go backwards
-    # turn CCW until minimum is between 170 and 190 degrees behind you.
-    if np.argmin(np.array(scan_data)) in range(170,190):
-        inOrientation = True
-    else:
-        inOrientation = False
+# def returnToRest2(): #we can go backwards
+#     # turn CCW until minimum is between 170 and 190 degrees behind you.
+#     if np.argmin(np.array(scan_data)) in range(170,190):
+#         inOrientation = True
+#     else:
+#         inOrientation = False
 
-    while not inOrientation:
-        asebaNetwork.SendEventName(
-        'motor.target', [0,5])
-        if np.argmin(np.array(scan_data)) in range(170,190):
-            inOrientation = True
+#     while not inOrientation:
+#         asebaNetwork.SendEventName(
+#         'motor.target', [0,5])
+#         if np.argmin(np.array(scan_data)) in range(170,190):
+#             inOrientation = True
 
-    asebaNetwork.SendEventName(
-    'motor.target', [0,0])
-    sleep(5)
-    print("Here. Lets go to the wall.")
-    if min((scan_data)) > 200: # we are close to the wall
-        benchWarm()
-    else:
-        asebaNetwork.SendEventName('motor.target', [-200, -50]) #move backwards
-        while min((scan_data)) > 200: # until wall is sensed.
-            sleep(0.1)
-        asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
-        benchWarm()
+#     asebaNetwork.SendEventName(
+#     'motor.target', [0,0])
+#     sleep(5)
+#     print("Here. Lets go to the wall.")
+#     if min((scan_data)) > 200: # we are close to the wall
+#         benchWarm()
+#     else:
+#         asebaNetwork.SendEventName('motor.target', [-200, -50]) #move backwards
+#         while min((scan_data)) > 200: # until wall is sensed.
+#             sleep(0.1)
+#         asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
+#         benchWarm()
 
 def returnToRest():
     # turn CCW until minimum is between 170 and 190 degrees behind you.
@@ -455,7 +455,7 @@ def returnToRest():
     while not inOrientation:
         asebaNetwork.SendEventName(
         'motor.target', [0,5])
-        if  if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
+        if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
             inOrientation = True
 
     asebaNetwork.SendEventName(
@@ -480,8 +480,8 @@ def returnToRest():
 scanner_thread = threading.Thread(target=lidarScan, daemon = True)
 scanner_thread.start()
 
-# IR_thread = threading.Thread(target=infraredScan, daemon = True)
-# IR_thread.start()
+IR_thread = threading.Thread(target=infraredScan, daemon = True)
+IR_thread.start()
 
 # receiving_thread = threading.Thread(target=receiveInformation, daemon = True)
 # receiving_thread.start()
@@ -494,8 +494,6 @@ scanner_thread.start()
 def mainLoop():
     benchWarm() # we only call benchwarm here, because all other functions call each other
 
-def testLoop():
-    returnToRest3()
 #------------------- Main loop end ------------------------
 
 if __name__ == '__main__':
