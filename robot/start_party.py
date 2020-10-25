@@ -15,7 +15,7 @@ from math import cos, sin, pi, floor
 import threading
 from image_processing import sense_target
 from shapely.geometry import Point
-from particle_filtering import approximateLocation
+from particle_filtering import approximateLocation, dtr
 
 
 print("Starting robot")
@@ -76,6 +76,8 @@ floor_red = [0.295, 0.485]
 floor_yellow = [-0.295, 0.485]
 floor_green = [0.295, -0.485]
 floor_blue = [-0.295, -0.485]
+# dancefloor target
+dancefloor = 3
 
 #--------------------- init script end -------------------------
 
@@ -217,6 +219,8 @@ def receiveInformation():
 # -------------------- Party functions ----------------------------
 
 def benchWarm():
+    global dancefloor
+
     wait_time = 60
     t_0 = time.time()
     print("It is now " + str(t_0))
@@ -257,15 +261,14 @@ def getAngleToTarget(target_x, target_y):
 
     return angle - q_hat
 
+
 def goForward():
+    # moves 5 - 6 cm forward per second
     asebaNetwork.SendEventName('motor.target', [200,50])
 
-def goBackward():
-    asebaNetwork.SendEventName('motor.target', [-200,-50])
-
-def turn(degrees):
-    # turns by default clockwise for positive degrees
-    asebaNetwork.SendEventName('motor.target', [degrees,-degrees])
+def turn():
+    # 30 degrees per second (counter clockwise)
+    asebaNetwork.SendEventName('motor.target', [-20,15])
 
 
 
@@ -312,7 +315,7 @@ def findDancePartner(gender):
     # turn so we face outagain
     returnToRest()
 
-def checkDanceFloor()
+def checkDanceFloor():
     if x_hat > 0:
         if y_hat > 0:
             return 4 # red
@@ -333,15 +336,45 @@ def moveToDanceFloor(dancefloor):
             locationFinder()
         location = checkDanceFloor()
         # location is determined. Now we need to figure out a navigation thing
+        ######## Code ###########
+
+        target = [0,0] # default
+
+        if dancefloor == 3:
+            target = floor_yellow
+        if dancefloor == 4:
+            target = floor_red
+        if dancefloor == 5:
+            target = floor_blue
+        if dancefloor == 6:
+            target = floor_green
+
+        distance = getDistanceToTarget(target[0], target[1])
+        angle = getAngleToTarget(target[0], target[1])
+
+        turn_time = angle / dtr(30) # 30 degrees in radians
+        go_time = distance / 0.06
+
+        turn()
+        sleep(turn_time)
+        goForward()
+        sleep(go_time)
+        asebaNetwork.SendEventName('motor.target', [0,0])
+        ######## Code ###########
         # do some move close to dancefloor
     
     dance()
     
 def dance():
-    # make up a dance!! Max time 15 seconds then returnToRest
-    # moving and then doing a circle?
-    # randomly move in the parameter. (w sensors calibrated)
-    pass
+    asebaNetwork.SendEventName('motor.target', [10,100])
+    sleep(3) 
+
+    asebaNetwork.SendEventName('motor.target', [150,10])
+    sleep(5)
+
+    asebaNetwork.SendEventName('motor.target', [10,100])
+    sleep(3)
+    returnToRest()
 
 def returnToRest():
     # Locate area
@@ -349,7 +382,7 @@ def returnToRest():
     # Move to nearest wall
     # Turn away from the wall
     # benchWarm() again.
-    pass
+    benchWarm()
 
 # ----------------------------------------------------------
 
@@ -368,14 +401,7 @@ IR_thread.start()
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    while delta > 1:
-        locationFinder()
-        print(toggle)
-        print(x_hat, y_hat, q_hat)
-        print(camera_output)
-        print(delta)
-    print('I have found myself')
-    sleep(5)
+    benchWarm() # we only call benchwarm here, because all other functions call each other
 
 #------------------- Main loop end ------------------------
 
@@ -383,7 +409,7 @@ if __name__ == '__main__':
     #testCamera()
     #testThymio()
     #testLidar()
-    sleep(1)
+    sleep(1) #Warmup Lidar
     try:
         while True:
             # receiveInformation()
