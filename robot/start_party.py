@@ -14,7 +14,8 @@ from adafruit_rplidar import RPLidar
 from math import cos, sin, pi, floor
 import threading
 from image_processing import sense_target
-from particle_filtering import approximateLocation
+from shapely.geometry import Point
+from particle_filtering import approximateLocation, dtr
 
 
 print("Starting robot")
@@ -72,6 +73,14 @@ delta = 5
 # camera output
 camera_output = 0
 lidar_index = [0,315,270,225,180,135,90,45]
+# dancefloors
+floor_red = [0.295, 0.485]
+floor_yellow = [-0.295, 0.485]
+floor_green = [0.295, -0.485]
+floor_blue = [-0.295, -0.485]
+# dancefloor target
+dancefloor = 3
+
 #--------------------- init script end -------------------------
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
@@ -212,6 +221,8 @@ def receiveInformation():
 # -------------------- Party functions ----------------------------
 
 def benchWarm():
+    global dancefloor
+
     wait_time = 60
     t_0 = time.time()
     print("It is now " + str(t_0))
@@ -236,6 +247,32 @@ def benchWarm():
 
     print("Time to go find someone myself!")
     findDancePartner(gender)
+
+def getDistanceToTarget(target_x, target_y):
+    target = Point(target_x, target_y)
+    return Point(x_hat, y_hat).distance(target)
+
+def getAngleToTarget(target_x, target_y):
+    delta_x = target_x - x_hat
+    delta_y = target_y - y_hat
+
+    if delta_x == 0:
+        delta_x = 0.001
+
+    angle = np.arctan(delta_y / delta_x)
+
+    return angle - q_hat
+
+
+def goForward():
+    # moves 5 - 6 cm forward per second
+    asebaNetwork.SendEventName('motor.target', [200,50])
+
+def turn():
+    # 30 degrees per second (counter clockwise)
+    asebaNetwork.SendEventName('motor.target', [-20,15])
+
+
 
 def findDancePartner(gender):
     print("Finding a dance partner")
@@ -303,6 +340,31 @@ def moveToDanceFloor(dancefloor):
             locationFinder()
         location = checkDanceFloor()
         # location is determined. Now we need to figure out a navigation thing
+        ######## Code ###########
+
+        target = [0,0] # default
+
+        if dancefloor == 3:
+            target = floor_yellow
+        if dancefloor == 4:
+            target = floor_red
+        if dancefloor == 5:
+            target = floor_blue
+        if dancefloor == 6:
+            target = floor_green
+
+        distance = getDistanceToTarget(target[0], target[1])
+        angle = getAngleToTarget(target[0], target[1])
+
+        turn_time = angle / dtr(30) # 30 degrees in radians
+        go_time = distance / 0.06
+
+        turn()
+        sleep(turn_time)
+        goForward()
+        sleep(go_time)
+        asebaNetwork.SendEventName('motor.target', [0,0])
+        ######## Code ###########
         # do some move close to dancefloor
     
     dance()
@@ -430,7 +492,7 @@ scanner_thread.start()
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    benchWarm() #will call other functions implicitly
+    benchWarm() # we only call benchwarm here, because all other functions call each other
 
 def testLoop():
     returnToRest3()
@@ -440,7 +502,7 @@ if __name__ == '__main__':
     #testCamera()
     #testThymio()
     #testLidar()
-    sleep(1)
+    sleep(1) #Warmup Lidar
     try:
         while True:
             # receiveInformation()
