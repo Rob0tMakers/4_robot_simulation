@@ -146,7 +146,7 @@ def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, q_hat, toggle)
     particles_lidar = np.apply_along_axis(rollLinewise, 1, particles)
     
     # delta matrix [[0, 1, 2, 3, 4, 5, 6, 7], ...] n=100
-    delta = np.absolute(particles_lidar - robot_lidar)
+    delta = np.absolute(particles_lidar - (0.001*robot_lidar))
     
     # delta array [0, 1, 2, ...] n=100
     sum_delta = np.apply_along_axis(np.sum, 1, delta)
@@ -158,7 +158,7 @@ def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, q_hat, toggle)
     approx = particles[delta_min_i]
     
     # if an error threshold is passed, the particle filtering should start from the beginning with a random sample
-    if sum_delta[delta_min_i] > 2.5:
-        toggle = True
+    # if sum_delta[delta_min_i] > 2.5:
+    #     toggle = True
 
     return approx, toggle

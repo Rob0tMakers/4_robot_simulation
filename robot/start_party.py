@@ -21,6 +21,7 @@ print("Starting robot")
 
 #-----------------------init script--------------------------
 camera = PiCamera()
+    # initialize the camera and grab a reference to the raw camera capture
 
 def dbusError(self, e):
     # dbus errors can be handled here.
@@ -67,7 +68,7 @@ q_hat = 0
 sample_toggle = True # toggling between random sampling and gaussian sampling
 # camera output
 camera_output = 0
-lidar_index = [0,45,90,135,180,225,270,315]
+lidar_index = [0,315,270,225,180,135,90,45]
 #--------------------- init script end -------------------------
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
@@ -225,7 +226,6 @@ def benchWarm():
     while time.time() < end_time: ##### See if we can actually detect a dance partner this way
         sendInformation(gender)
         rx = asebaNetwork.GetVariable("thymio-II", "prox.comm.rx")
-        print(rx[0])
         if rx[0] not in set([0, gender]):
             print("Partner found <3 <3 <3")
             if rx[0] in [3,4,5,6]:
@@ -317,14 +317,12 @@ location_thread.start()
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    sleep(5)
     print(sample_toggle)
     print(x_hat, y_hat, q_hat)
-    print()
-    #benchWarm()
+    print(np.array(scan_data)[lidar_index])
+    print(sense_target(camera))
 
 #------------------- Main loop end ------------------------
-
 
 if __name__ == '__main__':
     #testCamera()
