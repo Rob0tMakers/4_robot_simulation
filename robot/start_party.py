@@ -455,7 +455,7 @@ def returnToRest():
     while not inOrientation:
         asebaNetwork.SendEventName(
         'motor.target', [0,5])
-        if  if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
+        if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
             inOrientation = True
 
     asebaNetwork.SendEventName(
