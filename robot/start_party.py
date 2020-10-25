@@ -65,7 +65,8 @@ rx = [0]
 x_hat = 0
 y_hat = 0
 q_hat = 0
-sample_toggle = True # toggling between random sampling and gaussian sampling
+toggle = True # toggling between random sampling and gaussian sampling
+delta = 5
 # camera output
 camera_output = 0
 lidar_index = [0,315,270,225,180,135,90,45]
@@ -90,16 +91,15 @@ def infraredScan():
 
 
 def locationFinder():
-    global sample_toggle, x_hat, y_hat, q_hat, scan_data, lidar_index
+    global toggle, x_hat, y_hat, q_hat, scan_data, lidar_index, camera_output, delta
 
-    while True:
-        if sample_toggle == True:
-            camera_output = calibrate()
-        if camera_output > 0:
-            particle, sample_toggle = approximateLocation(np.array(scan_data)[lidar_index], camera_output, x_hat, y_hat, q_hat, sample_toggle)
-            x_hat = particle[0]
-            y_hat = particle[1]
-            q_hat = particle[2]
+    if toggle == True:
+        camera_output = calibrate()
+    if camera_output > 0:
+        particle, toggle, delta = approximateLocation(np.array(scan_data)[lidar_index], camera_output, x_hat, y_hat, q_hat, toggle)
+        x_hat = particle[0]
+        y_hat = particle[1]
+        q_hat = particle[2]
 
 def followWall(direction, gender):
     if direction == "cw":
@@ -278,14 +278,31 @@ def findDancePartner(gender):
     # turn so we face outagain
     returnToRest()
 
+def checkDanceFloor()
+    if x_hat > 0:
+        if y_hat > 0:
+            return 4 # red
+        else:
+            return 6 # green
+    else: #negative x value
+        if y_hat > 0:
+            return 3 # yellow
+        else:
+            return 5 # blue
+
 def moveToDanceFloor(dancefloor):
     asebaNetwork.SendEventName("leds.top", [32,0,32])
-    #locate where you are (particleFilter) --> should this be a speerate thread?
-    # determine how to move to dancefloor area
-    # execute move
-    # doublecheck you are in the riht spot?
-    pass
-
+    location = 0
+    while location != dancefloor:
+        delta = 5
+        while delta > 1:
+            locationFinder()
+        location = checkDanceFloor()
+        # location is determined. Now we need to figure out a navigation thing
+        # do some move close to dancefloor
+    
+    dance()
+    
 def dance():
     # make up a dance!! Max time 15 seconds then returnToRest
     # moving and then doing a circle?
@@ -311,23 +328,20 @@ IR_thread.start()
 # receiving_thread = threading.Thread(target=receiveInformation, daemon = True)
 # receiving_thread.start()
 
-location_thread = threading.Thread(target=locationFinder, daemon = True)
-location_thread.start()
+# location_thread = threading.Thread(target=locationFinder, daemon = True)
+# location_thread.start()
 
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    print(sample_toggle)
-    print(x_hat, y_hat, q_hat)
-    print(np.array(scan_data)[lidar_index])
-    print(sense_target(camera))
-    sleep(10)
-    asebaNetwork.SendEventName(
-        'motor.target',
-        [200, 50]) 
+    while delta > 1:
+        locationFinder()
+        print(toggle)
+        print(x_hat, y_hat, q_hat)
+        print(camera_output)
+        print(delta)
+    print('I have found myself')
     sleep(5)
-    asebaNetwork.SendEventName(
-        'motor.target', [0,0])
 
 #------------------- Main loop end ------------------------
 

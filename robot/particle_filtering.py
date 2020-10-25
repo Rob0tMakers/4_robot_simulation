@@ -38,48 +38,55 @@ def dtr(deg):
 # this function returns a normal distributed array of view angles (q), based on camera input
 # the reason why "right" is q = 0, is because Casper's simulation was built that way
 # IMPORTANT: only call this function, when camera_int != 0. The camera has to report something, otherwise spin robot until it does.
-def distributeViewAngles(camera_int):
-    view_angle = 0 # this is the direction where the robot camera and lidar[0] are facing => 0 >> right (default)
+def distributeViewAngles(camera_int, toggle):
     spread = 20 # this is the std. deviation 
-    
-    # case red >> top right corner
-    if camera_int == 1:
-        view_angle = 45
+    if toggle == True: #this means, we have recently taken a photo, so we base view angles from camera_int
+        # case red >> top right corner
+        if camera_int == 1:
+            view_angle = 45
 
-    # case red/green >> right
-    if camera_int == 1.5:
-        view_angle = 0
-    
-    # case green >> bottom right corner
-    if camera_int == 2:
-        view_angle = 315
+        # case red/green >> right
+        if camera_int == 1.5:
+            view_angle = 0
         
-    # case green/blue >> bottom
-    if camera_int == 2.5:
-        view_angle = 270
+        # case green >> bottom right corner
+        if camera_int == 2:
+            view_angle = 315
+            
+        # case green/blue >> bottom
+        if camera_int == 2.5:
+            view_angle = 270
 
-    # case blue >> bottom left corner
-    if camera_int == 3:
-        view_angle = 225
-    
-    # case blue/yellow >> left
-    if camera_int == 3.5:
-        view_angle = 180
+        # case blue >> bottom left corner
+        if camera_int == 3:
+            view_angle = 225
         
-    # case yellow >> top left corner
-    if camera_int == 4:
-        view_angle = 135
+        # case blue/yellow >> left
+        if camera_int == 3.5:
+            view_angle = 180
+            
+        # case yellow >> top left corner
+        if camera_int == 4:
+            view_angle = 135
+            
+        # case yellow/red >> top
+        if camera_int == 4.5:
+            view_angle = 90
+
+        return dtr(np.random.normal(view_angle, spread, (100, 1)))
+
+    else: #base off previous q_hat, which is now named camera_int
+        # convert q_hat which is saved as camera int
+        view_angle = camera_int
+        # make sure to change everything to be in radians since it is already in radians
+        spread = dtr(spread)
+        return np.random.normal(view_angle, spread, (100, 1))
         
-    # case yellow/red >> top
-    if camera_int == 4.5:
-        view_angle = 90
-        
-    return dtr(np.random.normal(view_angle, spread, (100, 1)))
 
 
 # this function does the initial particle placement, random spread across the whole map (minus a small margin)
 # calls distributeViewAngles for normal distribution of q
-def spawnParticles(camera_int):
+def spawnParticles(camera_int, toggle):
     start_x = x_floor
     start_y = y_ceil
     
@@ -91,18 +98,18 @@ def spawnParticles(camera_int):
     x_col = calc_pos_x(random_values[:,:1])
     y_col = calc_pos_y(random_values[:,1:2])
     
-    q_col = distributeViewAngles(camera_int)
+    q_col = distributeViewAngles(camera_int, toggle)
 
     particles = np.concatenate((x_col, y_col, q_col), axis=1)
     return particles
 
 
 # this function returns a normal distributed array of particles based on the previous location approximation
-def resampleParticles(x, y, camera_int):
+def resampleParticles(x, y, camera_int, toggle):
     x_col = np.clip(np.random.normal(x, 0.1, (100, 1)), x_floor, x_ceil)
     y_col = np.clip(np.random.normal(y, 0.1, (100, 1)), y_floor, y_ceil)
     
-    q_col = distributeViewAngles(camera_int)
+    q_col = distributeViewAngles(camera_int, toggle)
     
     return np.concatenate((x_col, y_col, q_col), axis=1)
 
@@ -136,11 +143,11 @@ def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, q_hat, toggle)
     particles = np.array([])
 
     if toggle == True:
-        particles = spawnParticles(camera_output) # set particles [[x, y, q], ...] n=100
+        particles = spawnParticles(camera_output, toggle) # set particles [[x, y, q], ...] n=100
         toggle = False
     else:
         # we are using the previous approximation (x_hat, y_hat) to approximate the next particle
-        particles = resampleParticles(x_hat, y_hat, q_hat) # set particles [[x, y, q], ...]
+        particles = resampleParticles(x_hat, y_hat, q_hat, toggle) # set particles [[x, y, q], ...]
 
     # this array contains the distances to the walls, simulating our lidar laser range finder's output
     particles_lidar = np.apply_along_axis(rollLinewise, 1, particles)
@@ -161,4 +168,7 @@ def approximateLocation(robot_lidar, camera_output, x_hat, y_hat, q_hat, toggle)
     # if sum_delta[delta_min_i] > 2.5:
     #     toggle = True
 
-    return approx, toggle
+    if sum_delta[delta_min_i] > 1.5:
+        toggle == True
+
+    return approx, toggle, sum_delta[delta_min_i]
