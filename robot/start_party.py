@@ -14,6 +14,7 @@ from adafruit_rplidar import RPLidar
 from math import cos, sin, pi, floor
 import threading
 from image_processing import sense_target
+from shapely.geometry import Point
 from particle_filtering import approximateLocation
 
 
@@ -70,6 +71,12 @@ delta = 5
 # camera output
 camera_output = 0
 lidar_index = [0,315,270,225,180,135,90,45]
+# dancefloors
+floor_red = [0.295, 0.485]
+floor_yellow = [-0.295, 0.485]
+floor_green = [0.295, -0.485]
+floor_blue = [-0.295, -0.485]
+
 #--------------------- init script end -------------------------
 
 #NOTE: if you get adafruit_rplidar.RPLidarException: Incorrect descriptor starting bytes
@@ -234,6 +241,33 @@ def benchWarm():
 
     print("Time to go find someone myself!")
     findDancePartner(gender)
+
+def getDistanceToTarget(target_x, target_y):
+    target = Point(target_x, target_y)
+    return Point(x_hat, y_hat).distance(target)
+
+def getAngleToTarget(target_x, target_y):
+    delta_x = target_x - x_hat
+    delta_y = target_y - y_hat
+
+    if delta_x == 0:
+        delta_x = 0.001
+
+    angle = np.arctan(delta_y / delta_x)
+
+    return angle - q_hat
+
+def goForward():
+    asebaNetwork.SendEventName('motor.target', [200,50])
+
+def goBackward():
+    asebaNetwork.SendEventName('motor.target', [-200,-50])
+
+def turn(degrees):
+    # turns by default clockwise for positive degrees
+    asebaNetwork.SendEventName('motor.target', [degrees,-degrees])
+
+
 
 def findDancePartner(gender):
     print("Finding a dance partner")
