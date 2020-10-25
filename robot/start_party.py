@@ -49,6 +49,8 @@ asebaNetwork.LoadScripts(
     error_handler=dbusError
 )
 
+sleep(2)
+
 #signal scanning thread to exit
 exit_now = False
 
@@ -275,10 +277,12 @@ def findDancePartner(gender):
     sleep(3)
     print('no one again')
     
-    # turn so we face outagain
-    returnToRest()
+    # turn so we face outagain (turn left 90 deg)
+    asebaNetwork.SendEventName('motor.target', [0,50])
+    sleep(2)
+    benchWarm()
 
-def checkDanceFloor()
+def checkDanceFloor():
     if x_hat > 0:
         if y_hat > 0:
             return 4 # red
@@ -302,28 +306,120 @@ def moveToDanceFloor(dancefloor):
         # do some move close to dancefloor
     
     dance()
-    
+
 def dance():
-    # make up a dance!! Max time 15 seconds then returnToRest
-    # moving and then doing a circle?
-    # randomly move in the parameter. (w sensors calibrated)
-    pass
+    asebaNetwork.SendEventName('motor.target', [10,100])
+    sleep(3) 
+    asebaNetwork.SendEventName('motor.target', [150,10])
+    sleep(5)
+    asebaNetwork.SendEventName('motor.target', [10,100])
+    sleep(3)
+    returnToRest()
+
+# def returnToRest():
+#     #Shortest distance to wall #
+#     lidar_index_short = [0,90,180,270]
+#     indexoflidar = np.argmin(np.array(scan_data)[lidar_index_short]) 
+#     print(indexoflidar)
+#     if indexoflidar == 0:
+#         asebaNetwork.SendEventName('motor.target', [200, 50])
+#         if scan_data[0] < 200: 
+#             #Turn 180 degree and back into wall 
+#             asebaNetwork.SendEventName('motor.target', [200, 50])
+#             asebaNetwork.SendEventName('motor.target', [-200, -50])
+#             benchWarm()
+#     elif indexoflidar == 1: 
+#         #Turn 90 degree 
+#         asebaNetwork.SendEventName('motor.target', [100, 50])
+#         #forward
+#         asebaNetwork.SendEventName('motor.target', [200, 50])
+#         if scan_data[0] < 200: 
+#             #Turn 180 degree and back into wall 
+#             asebaNetwork.SendEventName('motor.target', [200, 50])
+#             asebaNetwork.SendEventName('motor.target', [-200, -50])
+#             benchWarm()
+#     elif indexoflidar == 2: 
+#         #Backwards until wall 😛 
+#         asebaNetwork.SendEventName('motor.target', [-200, -50])
+#         if scan_data[0] < 200:
+#             #Turn 180 degree and back into wall 
+#             asebaNetwork.SendEventName('motor.target', [200, 50])
+#             asebaNetwork.SendEventName('motor.target', [-200, -50])
+#             benchWarm()
+#     else: 
+#         #Turn 270 degree
+#         asebaNetwork.SendEventName('motor.target', [100, 50])
+#         #forward
+#         asebaNetwork.SendEventName('motor.target', [200, 50])
+#         if scan_data[0] < 200:  
+#             #Turn 180 degree and back into wall 
+#             asebaNetwork.SendEventName('motor.target', [200, 50])
+#             asebaNetwork.SendEventName('motor.target', [-200, -50])
+#             benchWarm()
+
+def returnToRest2(): #we can go backwards
+    # turn CCW until minimum is between 170 and 190 degrees behind you.
+    if np.argmin(np.array(scan_data)) in range(170,190):
+        inOrientation = True
+    else:
+        inOrientation = False
+
+    while not inOrientation:
+        asebaNetwork.SendEventName(
+        'motor.target', [0,5])
+        if np.argmin(np.array(scan_data)) in range(170,190):
+            inOrientation = True
+
+    asebaNetwork.SendEventName(
+    'motor.target', [0,0])
+    sleep(5)
+    print("Here. Lets go to the wall.")
+    if min((scan_data)) > 200: # we are close to the wall
+        benchWarm()
+    else:
+        asebaNetwork.SendEventName('motor.target', [-200, -50]) #move backwards
+        while min((scan_data)) > 200: # until wall is sensed.
+            sleep(0.1)
+        asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
+        benchWarm()
 
 def returnToRest():
-    # Locate area
-    # Determine nearest wall
-    # Move to nearest wall
-    # Turn away from the wall
-    # benchWarm() again.
-    pass
+    # turn CCW until minimum is between 170 and 190 degrees behind you.
+    if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
+        inOrientation = True
+    else:
+        inOrientation = False
+
+    while not inOrientation:
+        asebaNetwork.SendEventName(
+        'motor.target', [0,5])
+        if  if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
+            inOrientation = True
+
+    asebaNetwork.SendEventName(
+    'motor.target', [0,0])
+    sleep(5)
+    print("Here. Lets go to the wall.")
+    if min((scan_data)) > 200: # we are close to the wall
+        asebaNetwork.SendEventName('motor.target', [0,50])
+        sleep(4)
+        benchWarm()
+    else:
+        asebaNetwork.SendEventName('motor.target', [200, 50]) #move backwards
+        while min((scan_data)) > 200: # until wall is sensed.
+            sleep(0.1)
+        asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
+        asebaNetwork.SendEventName('motor.target', [0,50])
+        sleep(4)
+        benchWarm()
 
 # ----------------------------------------------------------
 
 scanner_thread = threading.Thread(target=lidarScan, daemon = True)
 scanner_thread.start()
 
-IR_thread = threading.Thread(target=infraredScan, daemon = True)
-IR_thread.start()
+# IR_thread = threading.Thread(target=infraredScan, daemon = True)
+# IR_thread.start()
 
 # receiving_thread = threading.Thread(target=receiveInformation, daemon = True)
 # receiving_thread.start()
@@ -334,15 +430,10 @@ IR_thread.start()
 #------------------ Main loop here -------------------------
 
 def mainLoop():
-    while delta > 1:
-        locationFinder()
-        print(toggle)
-        print(x_hat, y_hat, q_hat)
-        print(camera_output)
-        print(delta)
-    print('I have found myself')
-    sleep(5)
+    benchWarm() #will call other functions implicitly
 
+def testLoop():
+    returnToRest3()
 #------------------- Main loop end ------------------------
 
 if __name__ == '__main__':
@@ -353,7 +444,7 @@ if __name__ == '__main__':
     try:
         while True:
             # receiveInformation()
-            mainLoop()
+            testLoop()
     except KeyboardInterrupt:
         print("Stopping robot")
         exit_now = True
