@@ -321,6 +321,13 @@ def mainLoop():
     print(x_hat, y_hat, q_hat)
     print(np.array(scan_data)[lidar_index])
     print(sense_target(camera))
+    sleep(10)
+    asebaNetwork.SendEventName(
+        'motor.target',
+        [200, 50]) 
+    sleep(5)
+    asebaNetwork.SendEventName(
+        'motor.target', [0,0])
 
 #------------------- Main loop end ------------------------
 
