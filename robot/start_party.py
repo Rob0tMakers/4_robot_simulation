@@ -332,16 +332,22 @@ def checkDanceFloor():
             return 5 # blue
 
 def moveToDanceFloor(dancefloor):
+    global delta
     asebaNetwork.SendEventName("leds.top", [32,0,32])
     location = 0
     while location != dancefloor:
+        print("Ok not yet.")
         delta = 5
-        while delta > 1:
+        while delta > 1.5:
             locationFinder()
+        print("I know where we are.")
         location = checkDanceFloor()
+        if location == dancefloor:
+            print("I am here")
+            break
         # location is determined. Now we need to figure out a navigation thing
         ######## Code ###########
-
+        print('we are at dancefloor ' + str(location))
         target = [0,0] # default
 
         if dancefloor == 3:
@@ -356,20 +362,30 @@ def moveToDanceFloor(dancefloor):
         distance = getDistanceToTarget(target[0], target[1])
         angle = getAngleToTarget(target[0], target[1])
 
+        if angle < 0:
+            angle = 2 * np.pi + angle
+
+        if angle > 4.5:
+            angle = 0
+
+        print("I know where to go")
+        print(distance, angle)
         turn_time = angle / dtr(30) # 30 degrees in radians
         go_time = distance / 0.06
 
+        print(turn_time, go_time)
         turn()
         sleep(turn_time)
         goForward()
         sleep(go_time)
         asebaNetwork.SendEventName('motor.target', [0,0])
-        ######## Code ###########
-        # do some move close to dancefloor
-    
+        break # just to be competition ready. 
+
+    print("I am here")
     dance()
 
 def dance():
+    print("See me do my dance, mom!!!")
     asebaNetwork.SendEventName('motor.target', [10,100])
     sleep(3) 
     asebaNetwork.SendEventName('motor.target', [150,10])
@@ -448,31 +464,33 @@ def dance():
 def returnToRest():
     # turn CCW until minimum is between 170 and 190 degrees behind you.
     if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
+        print(np.argmin(np.array(scan_data)))
+        print(scan_data[np.argmin(np.array(scan_data))])
         inOrientation = True
     else:
         inOrientation = False
-
     while not inOrientation:
         asebaNetwork.SendEventName(
         'motor.target', [0,5])
         if np.argmin(np.array(scan_data)) in range(350,360) or np.argmin(np.array(scan_data)) in range (0,10):
             inOrientation = True
-
     asebaNetwork.SendEventName(
     'motor.target', [0,0])
     sleep(5)
     print("Here. Lets go to the wall.")
-    if min((scan_data)) > 200: # we are close to the wall
+    if min((scan_data)) > 150: # we are close to the wall
         asebaNetwork.SendEventName('motor.target', [0,50])
-        sleep(4)
+        sleep(14)
+        asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
         benchWarm()
     else:
         asebaNetwork.SendEventName('motor.target', [200, 50]) #move backwards
-        while min((scan_data)) > 200: # until wall is sensed.
+        while min((scan_data)) > 150: # until wall is sensed.
             sleep(0.1)
         asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
         asebaNetwork.SendEventName('motor.target', [0,50])
-        sleep(4)
+        sleep(14)
+        asebaNetwork.SendEventName('motor.target', [0, 0]) #stop as we are out of the while loop
         benchWarm()
 
 # ----------------------------------------------------------
@@ -494,6 +512,9 @@ IR_thread.start()
 def mainLoop():
     benchWarm() # we only call benchwarm here, because all other functions call each other
 
+def testLoop():
+    moveToDanceFloor(3)
+
 #------------------- Main loop end ------------------------
 
 if __name__ == '__main__':
@@ -504,7 +525,7 @@ if __name__ == '__main__':
     try:
         while True:
             # receiveInformation()
-            testLoop()
+            mainLoop()
     except KeyboardInterrupt:
         print("Stopping robot")
         exit_now = True
